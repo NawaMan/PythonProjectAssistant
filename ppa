@@ -1,0 +1,236 @@
+#!/bin/zsh
+
+COMMAND="$1"
+APPNAME=ppa
+VERSION="v1.0.0"
+
+HELP=$(cat <<-EOF
+Python Project Assistant (PPA) $VERSION
+Usage:
+    $APPNAME [v]ersion                                      Returns the version of the application.
+    $APPNAME [h]elp                                         Show the help message.
+    $APPNAME [c]reate      <project-name> [python-version]  Creates a new project.
+    $APPNAME [a]ctivate                                     Activates the current project.
+    $APPNAME [t]est        [test-name]                      Runs tests.
+    $APPNAME [c]o[v]erage  [test-name]                      Runs tests and generates coverage report. FORMAT=report format (html, xml, lcov).
+    $APPNAME [i]nstall     [packages]                       Installs packages.
+    $APPNAME [u]ninstall   [packages]                       Uninstalls packages.
+EOF
+)
+
+GREETER_PY=$(cat <<-EOF
+def greet(name: str) -> None:
+    return f"Hello, {name}!"
+EOF
+)
+
+MAINPY=$(cat <<-EOF
+import greeter
+def main():
+    print(greeter.greet("World"))
+
+if __name__ == "__main__":
+    main()
+EOF
+)
+
+TEST_GREETER_PY=$(cat <<-EOF
+import greeter
+def test_greet():
+        assert greeter.greet("World") == "Hello, World!"
+        assert greeter.greet("John") == "Hello, John!"
+EOF
+)
+
+
+function main() {
+    if [[ "$COMMAND" == "version" || "$COMMAND" == "v" ]]; then
+        echo "$APPNAME-$VERSION"
+        return 0
+    fi
+
+    if [[ "$COMMAND" == "create"    || "$COMMAND" == "c"  ]]; then shift; create    "$@" ; exit $?; fi
+    if [[ "$COMMAND" == "activate"  || "$COMMAND" == "a"  ]]; then shift; activate  "$@" ; exit $?; fi
+    if [[ "$COMMAND" == "test"      || "$COMMAND" == "t"  ]]; then shift; test      "$@" ; exit $?; fi
+    if [[ "$COMMAND" == "coverage"  || "$COMMAND" == "cv" ]]; then shift; coverage  "$@" ; exit $?; fi
+    if [[ "$COMMAND" == "install"   || "$COMMAND" == "i"  ]]; then shift; install   "$@" ; exit $?; fi
+    if [[ "$COMMAND" == "uninstall" || "$COMMAND" == "u"  ]]; then shift; uninstall "$@" ; exit $?; fi
+
+    if [[ "$COMMAND" == "" ]]; then
+        >&2 echo "ERROR: No command specified."
+        >&2 echo ""
+        >&2 echo "$HELP"
+        exit -1
+    fi
+
+    if [[ "$COMMAND" != "help" || "$COMMAND" != "h" ]]; then
+        >&2 echo "ERROR: Unknown command: '$COMMAND'."
+        >&2 echo ""
+        >&2 echo "$HELP"
+        exit -1
+    fi
+
+    echo "$HELP"
+
+}
+
+
+function create() {
+    PROJECT_NAME=$1
+    PYTHON_VERSION=$2
+
+    if [[ "$PYTHON_VERSION" == "" || "$PYTHON_VERSION" == "system" ]] ; then
+        echo "No specific version of Python given, use the default: 3.11"
+        PYTHON_VERSION=3.11
+    fi
+
+    if [[ "$PROJECT_NAME" == "" ]]; then >&2 echo "ERROR: No project name specified." ; return -1 ; fi
+
+    if [[ "$(command -v pyenv)"  == "" ]]; then >&2 echo "ERROR: 'pyenv' is not installed."  ; return -1 ;fi
+    if [[ "$(command -v pipenv)" == "" ]]; then >&2 echo "ERROR: 'pipenv' is not installed." ; return -1 ; fi
+
+    # Check if the --install-python flag exists and remove it from the arguments
+    if [[ "$*" == *"--install-python"* ]]; then
+        install_python=true
+        set -- "${@/--install-python/}"
+    fi
+    
+    echo "PYTHON_VERSION: $PYTHON_VERSION"
+    VERSIONS=$(export VERSION="$PYTHON_VERSION" ; pyenv versions --bare | grep -E "^(`echo "$VERSION" | sed 's/[.]/\\./g'`\.|$VERSION"$")")
+    VERCOUNT=$(echo $VERSIONS | wc -l | grep -Eo "[0-9]+")
+
+    # Check if the Python version is already installed
+    if [[ "$VERCOUNT" == "0" ]] ; then
+        # Check if the --install-python flag was provided or ask the user
+        if [[ $install_python == true ]]; then
+            # Install the Python version without asking
+            echo "Installing Python $PYTHON_VERSION..."
+            pyenv install $PYTHON_VERSION
+        else
+            if [[ "$PYTHON_VERSION" != "" ]] ; then
+                # Ask the user before installing the Python version
+                echo -n "Python $PYTHON_VERSION is not installed. Do you want to install it? (y/n): "
+                read install_choice 
+                if [[ $install_choice == [Yy] ]]; then
+                    echo "Installing Python $PYTHON_VERSION..."
+                    pyenv install $PYTHON_VERSION
+                else
+                    echo "Here are available Python versions found: "
+                    pyenv versions
+                    echo -n "Type the version you prefer or 'quit' to stop: "
+                    read install_choice
+
+                    if [[ $install_choice == quit ]]; then
+                        echo "Bye ..."
+                        return -1
+                    else
+                        PYTHON_VERSION="$install_choice"
+                        echo "Installing Python $PYTHON_VERSION..."
+                        pyenv install $PYTHON_VERSION
+                    fi
+                fi
+            fi
+        fi
+    elif [[ "$VERCOUNT" == "1" ]] ; then
+        # All good
+        echo "VERSIONS: $VERSIONS"
+        echo "VERCOUNT: $VERCOUNT"
+    else
+        echo "Here are available Python versions found: "
+        pyenv versions
+        echo -n "Type the version you prefer or 'quit' to stop: "
+        read install_choice
+
+        if [[ $install_choice == quit ]]; then
+            echo "Bye ..."
+            return -1
+        else
+            PYTHON_VERSION="$install_choice"
+            echo "Installing Python $PYTHON_VERSION..."
+            pyenv install $PYTHON_VERSION
+        fi
+    fi
+
+    mkdir "$PROJECT_NAME"
+    pushd "$PROJECT_NAME"
+
+    mkdir  src
+    mkdir  tests
+    touch  src/__init__.py
+    touch  tests/__init__.py
+    
+    echo "htmlcov"   >> .gitignore
+    echo ".coverage" >> .gitignore
+
+    printf '%s\n' "$GREETER_PY"      > src/greeter.py
+    printf '%s\n' "$MAIN_PY"         > src/main.py
+    printf '%s\n' "$TEST_GREETER_PY" > tests/test_greeter.py
+
+    if [[ "$PYTHON_VERSION" != "" ]] ; then
+        pyenv  local    $PYTHON_VERSION
+    fi
+    pipenv --python $PYTHON_VERSION
+
+    pipenv install pytest pylint coverage pytest-cov --dev
+
+    local PREV_PYTHONPATH="$PYTHONPATH"
+    export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
+    pipenv shell --python $PYTHON_VERSION
+    PYTHONPATH="$PREV_PYTHONPATH"
+}
+
+function ensure-activated() {
+    if [[ "$VIRTUAL_ENV" == "" ]]; then
+        echo "Virtual environment is not activated. Please activate it first."
+        exit
+    fi
+}
+
+function activate() {
+    if [[ "$VIRTUAL_ENV" != "" ]]; then
+        echo "Virtual environment already activated."
+        exit
+    fi
+
+    local PREV_PYTHONPATH="$PYTHONPATH"
+    echo "Activating virtual environment ..."
+    echo "Type 'exit' to deactivate the environment."
+    echo ""
+    export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
+    pipenv shell
+    echo "Bye ..."
+    PYTHONPATH="$PREV_PYTHONPATH"
+}
+
+function test() {
+    ensure-activated
+
+    if [ $# -eq 0 ]; then
+        pytest tests/
+    else
+        pytest "$@"
+    fi
+}
+
+function coverage() {
+    ensure-activated
+
+    FORMAT=${FORMAT:-term}
+    pytest --cov=src --cov-report=$FORMAT tests/
+
+    if [[ "$FORMAT" == "html" && "$(command -v open)" != "" ]]; then
+        open htmlcov/index.html
+    fi
+}
+
+function install() {
+    ensure-activated
+    pipenv install "$@"
+}
+
+function uninstall() {
+    ensure-activated
+    pipenv uninstall "$@"
+}
+
+main "$@"
