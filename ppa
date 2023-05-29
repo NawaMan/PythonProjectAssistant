@@ -63,7 +63,7 @@ function main() {
         exit -1
     fi
 
-    if [[ "$COMMAND" != "help" || "$COMMAND" != "h" ]]; then
+    if [[ "$COMMAND" != "help" && "$COMMAND" != "h" ]]; then
         >&2 echo "ERROR: Unknown command: '$COMMAND'."
         >&2 echo ""
         >&2 echo "$HELP"
