@@ -4,17 +4,36 @@ COMMAND="$1"
 APPNAME=ppa
 VERSION="v1.0.0"
 
+highlight() {
+    if [[ -n "$(tput smul)" && -n "$(tput bold)" ]]; then
+        echo $(echo -e "$1" | sed 's/\[/\\e\[4m\\e\[1m/g' | sed 's/\]/\\e\[0m/g')
+    else
+        echo "$1"
+    fi
+}
+
+
+CMD_VERSION=$(highlight "[v]ersion")
+CMD_HELP=$(highlight "[h]elp")
+CMD_CREATE=$(highlight "[c]reate")
+CMD_ACTIVATE=$(highlight "[a]ctivate")
+CMD_TEST=$(highlight "[t]est")
+CMD_COVERAGE=$(highlight "[c]o[v]erage")
+CMD_INSTALL=$(highlight "[i]nstall")
+CMD_UNINSTALL=$(highlight "[u]ninstall")
+
+
 HELP=$(cat <<-EOF
 Python Project Assistant (PPA) $VERSION
 Usage:
-    $APPNAME [v]ersion                                      Returns the version of the application.
-    $APPNAME [h]elp                                         Show the help message.
-    $APPNAME [c]reate      <project-name> [python-version]  Creates a new project.
-    $APPNAME [a]ctivate                                     Activates the current project.
-    $APPNAME [t]est        [test-name]                      Runs tests.
-    $APPNAME [c]o[v]erage  [test-name]                      Runs tests and generates coverage report. FORMAT=report format (html, xml, lcov).
-    $APPNAME [i]nstall     [packages]                       Installs packages.
-    $APPNAME [u]ninstall   [packages]                       Uninstalls packages.
+    $APPNAME $CMD_VERSION                                      Returns the version of the application.
+    $APPNAME $CMD_HELP                                         Show the help message.
+    $APPNAME $CMD_CREATE      <project-name> [python-version]  Creates a new project.
+    $APPNAME $CMD_ACTIVATE                                     Activates the current project.
+    $APPNAME $CMD_TEST        [test-name]                      Runs tests.
+    $APPNAME $CMD_COVERAGE    [test-name]                      Runs tests and generates coverage report. FORMAT=report format (html, xml, lcov).
+    $APPNAME $CMD_INSTALL     [packages]                       Installs packages.
+    $APPNAME $CMD_UNINSTALL   [packages]                       Uninstalls packages.
 EOF
 )
 
@@ -41,7 +60,6 @@ def test_greet():
         assert greeter.greet("John") == "Hello, John!"
 EOF
 )
-
 
 function main() {
     if [[ "$COMMAND" == "version" || "$COMMAND" == "v" ]]; then
@@ -70,7 +88,7 @@ function main() {
         exit -1
     fi
 
-    echo "$HELP"
+    echo -e "$HELP"
 
 }
 
