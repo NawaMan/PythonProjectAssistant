@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 
 COMMAND="$1"
 APPNAME=ppa
@@ -66,47 +66,46 @@ function main() {
         echo "$APPNAME-$VERSION"
         return 0
     fi
-
+    
     if [[ "$COMMAND" == "create"    || "$COMMAND" == "c"  ]]; then shift; create    "$@" ; exit $?; fi
     if [[ "$COMMAND" == "activate"  || "$COMMAND" == "a"  ]]; then shift; activate  "$@" ; exit $?; fi
     if [[ "$COMMAND" == "test"      || "$COMMAND" == "t"  ]]; then shift; test      "$@" ; exit $?; fi
     if [[ "$COMMAND" == "coverage"  || "$COMMAND" == "cv" ]]; then shift; coverage  "$@" ; exit $?; fi
     if [[ "$COMMAND" == "install"   || "$COMMAND" == "i"  ]]; then shift; install   "$@" ; exit $?; fi
     if [[ "$COMMAND" == "uninstall" || "$COMMAND" == "u"  ]]; then shift; uninstall "$@" ; exit $?; fi
-
+    
     if [[ "$COMMAND" == "" ]]; then
         >&2 echo "ERROR: No command specified."
         >&2 echo ""
-        >&2 echo "$HELP"
+        >&2 echo -e "$HELP"
         exit -1
     fi
-
-    if [[ "$COMMAND" != "help" && "$COMMAND" != "h" ]]; then
+    
+    if [[ "$COMMAND" != "help" && "$COMMAND" != "h" && "$COMMAND" != "--help" && "$COMMAND" != "-h" ]]; then
         >&2 echo "ERROR: Unknown command: '$COMMAND'."
         >&2 echo ""
-        >&2 echo "$HELP"
+        >&2 echo -e"$HELP"
         exit -1
     fi
-
+    
     echo -e "$HELP"
-
 }
 
 
 function create() {
     PROJECT_NAME=$1
     PYTHON_VERSION=$2
-
+    
     if [[ "$PYTHON_VERSION" == "" || "$PYTHON_VERSION" == "system" ]] ; then
         echo "No specific version of Python given, use the default: 3.11"
         PYTHON_VERSION=3.11
     fi
-
+    
     if [[ "$PROJECT_NAME" == "" ]]; then >&2 echo "ERROR: No project name specified." ; return -1 ; fi
-
+    
     if [[ "$(command -v pyenv)"  == "" ]]; then >&2 echo "ERROR: 'pyenv' is not installed."  ; return -1 ;fi
     if [[ "$(command -v pipenv)" == "" ]]; then >&2 echo "ERROR: 'pipenv' is not installed." ; return -1 ; fi
-
+    
     # Check if the --install-python flag exists and remove it from the arguments
     if [[ "$*" == *"--install-python"* ]]; then
         install_python=true
@@ -116,7 +115,7 @@ function create() {
     echo "PYTHON_VERSION: $PYTHON_VERSION"
     VERSIONS=$(export VERSION="$PYTHON_VERSION" ; pyenv versions --bare | grep -E "^(`echo "$VERSION" | sed 's/[.]/\\./g'`\.|$VERSION"$")")
     VERCOUNT=$(echo $VERSIONS | wc -l | grep -Eo "[0-9]+")
-
+    
     # Check if the Python version is already installed
     if [[ "$VERCOUNT" == "0" ]] ; then
         # Check if the --install-python flag was provided or ask the user
@@ -168,10 +167,10 @@ function create() {
             pyenv install $PYTHON_VERSION
         fi
     fi
-
+    
     mkdir "$PROJECT_NAME"
     pushd "$PROJECT_NAME"
-
+    
     mkdir  src
     mkdir  tests
     touch  src/__init__.py
@@ -179,18 +178,18 @@ function create() {
     
     echo "htmlcov"   >> .gitignore
     echo ".coverage" >> .gitignore
-
+    
     printf '%s\n' "$GREETER_PY"      > src/greeter.py
     printf '%s\n' "$MAIN_PY"         > src/main.py
     printf '%s\n' "$TEST_GREETER_PY" > tests/test_greeter.py
-
+    
     if [[ "$PYTHON_VERSION" != "" ]] ; then
         pyenv  local    $PYTHON_VERSION
     fi
     pipenv --python $PYTHON_VERSION
-
+    
     pipenv install pytest pylint coverage pytest-cov --dev
-
+    
     local PREV_PYTHONPATH="$PYTHONPATH"
     export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
     pipenv shell --python $PYTHON_VERSION
@@ -209,7 +208,7 @@ function activate() {
         echo "Virtual environment already activated."
         exit
     fi
-
+    
     local PREV_PYTHONPATH="$PYTHONPATH"
     echo "Activating virtual environment ..."
     echo "Type 'exit' to deactivate the environment."
@@ -222,7 +221,7 @@ function activate() {
 
 function test() {
     ensure-activated
-
+    
     if [ $# -eq 0 ]; then
         pytest tests/
     else
@@ -232,7 +231,7 @@ function test() {
 
 function coverage() {
     ensure-activated
-
+    
     FORMAT=${FORMAT:-term}
     pytest --cov=src --cov-report=$FORMAT tests/
 
