@@ -24,6 +24,7 @@ CMD_UNINSTALL=$(highlight "[u]ninstall")
 
 
 HELP=$(cat <<-EOF
+
 Python Project Assistant (PPA) $VERSION
 Usage:
     $APPNAME $CMD_VERSION                                      Returns the version of the application.
@@ -34,6 +35,7 @@ Usage:
     $APPNAME $CMD_COVERAGE    [test-name]                      Runs tests and generates coverage report. FORMAT=report format (html, xml, lcov).
     $APPNAME $CMD_INSTALL     [packages]                       Installs packages.
     $APPNAME $CMD_UNINSTALL   [packages]                       Uninstalls packages.
+
 EOF
 )
 
@@ -76,15 +78,15 @@ function main() {
     
     if [[ "$COMMAND" == "" ]]; then
         >&2 echo "ERROR: No command specified."
-        >&2 echo ""
         >&2 echo -e "$HELP"
+        >&2 echo ""
         exit -1
     fi
     
     if [[ "$COMMAND" != "help" && "$COMMAND" != "h" && "$COMMAND" != "--help" && "$COMMAND" != "-h" ]]; then
         >&2 echo "ERROR: Unknown command: '$COMMAND'."
-        >&2 echo ""
         >&2 echo -e"$HELP"
+        >&2 echo ""
         exit -1
     fi
     
@@ -96,12 +98,16 @@ function create() {
     PROJECT_NAME=$1
     PYTHON_VERSION=$2
     
-    if [[ "$PYTHON_VERSION" == "" || "$PYTHON_VERSION" == "system" ]] ; then
-        echo "No specific version of Python given, use the default: 3.11"
-        PYTHON_VERSION=3.11
+    if [[ "$PROJECT_NAME" == "" ]]; then
+        >&2 echo "ERROR: No project name specified."
+        return -1
     fi
     
-    if [[ "$PROJECT_NAME" == "" ]]; then >&2 echo "ERROR: No project name specified." ; return -1 ; fi
+    if [[ "$PYTHON_VERSION" == "" || "$PYTHON_VERSION" == "system" ]] ; then
+        LATEST=$(pyenv install -l | grep -Eo "^ *[1-9]+\\.[0-9]+\\.[0-9]+$" | tail -n 1)
+        echo "No specific version of Python given, use the default: $LATEST"
+        PYTHON_VERSION="$LATEST"
+    fi
     
     if [[ "$(command -v pyenv)"  == "" ]]; then >&2 echo "ERROR: 'pyenv' is not installed."  ; return -1 ;fi
     if [[ "$(command -v pipenv)" == "" ]]; then >&2 echo "ERROR: 'pipenv' is not installed." ; return -1 ; fi
