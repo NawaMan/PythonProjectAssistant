@@ -1,0 +1,8 @@
+
+Conda
+- Larger/Slower
+- Cover both python/non-python
+- Not automatically saved -- so might miss when commit to version control (can be fixed with script)
+- The dependency saved file are always locked -- This can be good and bad -- depends.
+
+

@@ -104,7 +104,7 @@ function create() {
     fi
     
     if [[ "$PYTHON_VERSION" == "" || "$PYTHON_VERSION" == "system" ]] ; then
-        LATEST=$(pyenv install -l | grep -Eo "^ *[1-9]+\\.[0-9]+\\.[0-9]+$" | tail -n 1)
+        LATEST=$(pyenv install -l | grep -Eo "^ *[1-9]+\\.[0-9]+\\.[0-9]+$" | tail -n 1 | grep -Eo "[^ ]+")
         echo "No specific version of Python given, use the default: $LATEST"
         PYTHON_VERSION="$LATEST"
     fi
@@ -114,18 +114,18 @@ function create() {
     
     # Check if the --install-python flag exists and remove it from the arguments
     if [[ "$*" == *"--install-python"* ]]; then
-        install_python=true
+        INSTALL_PYTHON=true
         set -- "${@/--install-python/}"
     fi
     
-    echo "PYTHON_VERSION: $PYTHON_VERSION"
+    # echo "PYTHON_VERSION: $PYTHON_VERSION"
     VERSIONS=$(export VERSION="$PYTHON_VERSION" ; pyenv versions --bare | grep -E "^(`echo "$VERSION" | sed 's/[.]/\\./g'`\.|$VERSION"$")")
     VERCOUNT=$(echo $VERSIONS | wc -l | grep -Eo "[0-9]+")
     
     # Check if the Python version is already installed
     if [[ "$VERCOUNT" == "0" ]] ; then
         # Check if the --install-python flag was provided or ask the user
-        if [[ $install_python == true ]]; then
+        if [[ $INSTALL_PYTHON == true ]]; then
             # Install the Python version without asking
             echo "Installing Python $PYTHON_VERSION..."
             pyenv install $PYTHON_VERSION
@@ -154,11 +154,12 @@ function create() {
                 fi
             fi
         fi
-    elif [[ "$VERCOUNT" == "1" ]] ; then
+    elif [[ "$VERCOUNT" != "1" ]] ; then
+    #elif [[ "$VERCOUNT" == "1" ]] ; then
         # All good
-        echo "VERSIONS: $VERSIONS"
-        echo "VERCOUNT: $VERCOUNT"
-    else
+        # echo "VERSIONS: $VERSIONS"
+        # echo "VERCOUNT: $VERCOUNT"
+    #else
         echo "Here are available Python versions found: "
         pyenv versions
         echo -n "Type the version you prefer or 'quit' to stop: "
@@ -174,8 +175,17 @@ function create() {
         fi
     fi
     
-    mkdir "$PROJECT_NAME"
-    pushd "$PROJECT_NAME"
+    if [[ "$PYTHON_VERSION" != "" ]] ; then
+        pyenv local "$PYTHON_VERSION"
+        if [ $? -eq 1 ]; then
+            exit
+        fi
+    fi
+    
+    mkdir -p "$PROJECT_NAME"
+    pushd "$PROJECT_NAME" > /dev/null
+    
+    pipenv --python $PYTHON_VERSION
     
     mkdir  src
     mkdir  tests
@@ -189,17 +199,30 @@ function create() {
     printf '%s\n' "$MAIN_PY"         > src/main.py
     printf '%s\n' "$TEST_GREETER_PY" > tests/test_greeter.py
     
-    if [[ "$PYTHON_VERSION" != "" ]] ; then
-        pyenv  local    $PYTHON_VERSION
-    fi
-    pipenv --python $PYTHON_VERSION
-    
     pipenv install pytest pylint coverage pytest-cov --dev
     
     local PREV_PYTHONPATH="$PYTHONPATH"
-    export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
-    pipenv shell --python $PYTHON_VERSION
+    local NEW_PYTHONPATH="$(pwd)/src:$PYTHONPATH"
+    local RUN_FILE=$(mktemp)
+    echo "#!$SHELL"                               >  "$RUN_FILE"
+    echo "export PYTHONPATH=$NEW_PYTHONPATH"      >> "$RUN_FILE"
+    echo "pipenv shell --python $PYTHON_VERSION"  >> "$RUN_FILE"
+    chmod 755 "$RUN_FILE"
+    "$RUN_FILE"
+
     PYTHONPATH="$PREV_PYTHONPATH"
+}
+
+function init() {
+    PROJECT_PATH=$1
+    PYTHON_VERSION=$2
+
+    ABS_PATH=$(realpath "$PROJECT_PATH")
+    PARENT_PATH=$(dirname "$ABS_PATH")
+    PROJECT_NAME=$(basename "$ABS_PATH")
+
+    pushd "$PARENT_PATH"
+    create "$PROJECT_NAME" "$PYTHON_VERSION"
 }
 
 function ensure-activated() {
@@ -219,8 +242,14 @@ function activate() {
     echo "Activating virtual environment ..."
     echo "Type 'exit' to deactivate the environment."
     echo ""
-    export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
-    pipenv shell
+
+    local RUN_FILE=$(mktemp)
+    echo "#!$SHELL"                          >  "$RUN_FILE"
+    echo "export PYTHONPATH=$NEW_PYTHONPATH" >> "$RUN_FILE"
+    echo "pipenv shell"                      >> "$RUN_FILE"
+    chmod 755 "$RUN_FILE"
+    "$RUN_FILE"
+
     echo "Bye ..."
     PYTHONPATH="$PREV_PYTHONPATH"
 }

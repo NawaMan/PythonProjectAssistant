@@ -1,5 +1,5 @@
 # NOTE: SOURCE ME
-# NOTE: This script is intented to be sourced and not running as screen alone.
+# NOTE: This script is intented to be sourced and not running as standalone script.
 
 # Check if sudo is available and the script is not running as root
 if [ "$EUID" -ne 0 ] && command -v sudo &> /dev/null ; then
@@ -19,8 +19,8 @@ elif ! command -v brew &> /dev/null ; then
     echo 'Try: '
     echo '    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
     echo ""
-    echo "and don't for getthe post installation setup:"
-    echo '    (echo; echo '"'"'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"'"'"') >> /root/.profile'
+    echo "and do not forget the post installation setup:"
+    echo '    (echo; echo '"'"'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"'"'"') >> '"$HOME"'/.profile'
     echo '    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"'
     echo "and ensure your platform-specific packages are installed (Brew will tell you.)"
     echo "Then rerun this script."
