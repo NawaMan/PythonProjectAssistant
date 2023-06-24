@@ -234,6 +234,7 @@ function activate() {
     fi
     
     local PREV_PYTHONPATH="$PYTHONPATH"
+    local NEW_PYTHONPATH="$(pwd)/src:$PYTHONPATH"
     echo "Activating virtual environment ..."
     echo "Type 'exit' to deactivate the environment."
     echo ""
