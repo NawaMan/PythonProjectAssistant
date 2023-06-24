@@ -155,11 +155,6 @@ function create() {
             fi
         fi
     elif [[ "$VERCOUNT" != "1" ]] ; then
-    #elif [[ "$VERCOUNT" == "1" ]] ; then
-        # All good
-        # echo "VERSIONS: $VERSIONS"
-        # echo "VERCOUNT: $VERCOUNT"
-    #else
         echo "Here are available Python versions found: "
         pyenv versions
         echo -n "Type the version you prefer or 'quit' to stop: "
@@ -244,9 +239,10 @@ function activate() {
     echo ""
 
     local RUN_FILE=$(mktemp)
-    echo "#!$SHELL"                          >  "$RUN_FILE"
-    echo "export PYTHONPATH=$NEW_PYTHONPATH" >> "$RUN_FILE"
-    echo "pipenv shell"                      >> "$RUN_FILE"
+    echo "#!$SHELL"                              >  "$RUN_FILE"
+    echo "export PYTHONPATH=$NEW_PYTHONPATH"     >> "$RUN_FILE"
+    echo "pipenv install --dev --ignore-pipfile" >> "$RUN_FILE"
+    echo "pipenv shell"                          >> "$RUN_FILE"
     chmod 755 "$RUN_FILE"
     "$RUN_FILE"
 
