@@ -1,0 +1,16 @@
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+(echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> /home/newuser/.profile
+(echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> /home/newuser/.bashrc
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+brew install openssl
+echo 'export PATH="/home/linuxbrew/.linuxbrew/opt/openssl@3/bin:$PATH"'     >> /home/newuser/.profile
+echo 'export LDFLAGS="-L/home/linuxbrew/.linuxbrew/opt/openssl@3/lib"'      >> /home/newuser/.bashrc
+echo 'export CPPFLAGS="-I/home/linuxbrew/.linuxbrew/opt/openssl@3/include"' >> /home/newuser/.bashrc
+
+brew install pyenv
+echo 'eval "$(pyenv init -)"' >> /home/newuser/.bashrc
+eval "$(pyenv init -)"
+
+source /home/newuser/.bashrc
